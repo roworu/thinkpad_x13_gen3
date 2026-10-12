@@ -6,15 +6,44 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_DIR="$HOME/.config/pipewire/pipewire.conf.d"
 
+# lv2 bundles live under /usr/lib on arch, /usr/lib64 on fedora
+find_lsp_lv2() {
+  local d
+  for d in /usr/lib/lv2 /usr/lib64/lv2 /usr/local/lib/lv2 /usr/local/lib64/lv2; do
+    [[ -d "$d/lsp-plugins.lv2" ]] && return 0
+  done
+  return 1
+}
+
+find_lv2_backend() {
+  local d
+  for d in /usr/lib/spa-0.2 /usr/lib64/spa-0.2; do
+    [[ -f "$d/filter-graph/libspa-filter-graph-plugin-lv2.so" ]] && return 0
+  done
+  return 1
+}
+
 if ! command -v pipewire >/dev/null; then
   echo "pipewire not found - this setup only applies to a PipeWire system." >&2
   exit 1
 fi
 
-if [[ ! -d /usr/lib/lv2/lsp-plugins.lv2 ]] || [[ ! -d /usr/lib/lv2/calf.lv2 ]]; then
+if ! find_lsp_lv2; then
   echo "Missing LV2 plugins. Install them first:" >&2
-  echo "  sudo pacman -S lsp-plugins calf   # Arch/CachyOS" >&2
+  if command -v pacman >/dev/null 2>&1; then
+    echo "  sudo pacman -S lsp-plugins                       # Arch/CachyOS" >&2
+  elif command -v dnf >/dev/null 2>&1; then
+    echo "  sudo dnf install pipewire-module-filter-chain-lv2 lsp-plugins-lv2   # Fedora" >&2
+  elif command -v apt-get >/dev/null 2>&1; then
+    echo "  sudo apt install lsp-plugins-lv2                 # Debian/Ubuntu" >&2
+  fi
   exit 1
+fi
+
+# pipewire's lv2 filter-graph backend is a separate package on fedora
+if ! find_lv2_backend; then
+  echo "Warning: pipewire's LV2 filter-graph backend is missing." >&2
+  echo "On Fedora install it with: sudo dnf install pipewire-module-filter-chain-lv2" >&2
 fi
 
 echo "Which voicing?"

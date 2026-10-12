@@ -5,11 +5,23 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_DIR="$HOME/.config/pipewire/pipewire.conf.d"
-PLUGIN="/usr/lib/ladspa/librnnoise_ladspa.so"
 
-if [[ ! -f "$PLUGIN" ]]; then
-  echo "Missing plugin. Install it first:" >&2
-  echo "  sudo pacman -S noise-suppression-for-voice   # Arch/CachyOS" >&2
+# ladspa plugins live under /usr/lib on arch, /usr/lib64 on fedora
+find_rnnoise() {
+  local d
+  for d in /usr/lib/ladspa /usr/lib64/ladspa /usr/local/lib/ladspa /usr/local/lib64/ladspa; do
+    [[ -f "$d/librnnoise_ladspa.so" ]] && { printf '%s\n' "$d/librnnoise_ladspa.so"; return 0; }
+  done
+  return 1
+}
+
+if ! PLUGIN="$(find_rnnoise)"; then
+  echo "Missing plugin (librnnoise_ladspa.so). Install it first:" >&2
+  if command -v pacman >/dev/null 2>&1; then
+    echo "  sudo pacman -S noise-suppression-for-voice   # Arch/CachyOS" >&2
+  elif command -v dnf >/dev/null 2>&1; then
+    echo "  Not in the Fedora repos - build from source or install from a COPR." >&2
+  fi
   exit 1
 fi
 
@@ -20,7 +32,9 @@ if command -v pw-cli >/dev/null && ! pw-cli ls Node 2>/dev/null | grep -q "$MIC_
 fi
 
 mkdir -p "$CONF_DIR"
-cp "$HERE/99-input-denoising.conf" "$CONF_DIR/"
+# point the chain at wherever the plugin actually lives on this distro
+sed -E "s#plugin = .*librnnoise_ladspa\.so#plugin = $PLUGIN#" \
+  "$HERE/99-input-denoising.conf" > "$CONF_DIR/99-input-denoising.conf"
 
 systemctl --user restart pipewire pipewire-pulse
 sleep 1

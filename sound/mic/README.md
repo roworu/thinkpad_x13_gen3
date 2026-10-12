@@ -4,9 +4,15 @@ RNNoise background-noise removal on the internal mic, as a native
 PipeWire filter-chain, set as default input.
 
 ## Requirements
+
+Arch/CachyOS:
 ```bash
 sudo pacman -S noise-suppression-for-voice
 ```
+
+Fedora: not packaged in the official repos. Build
+`noise-suppression-for-voice` from source (or a COPR) to get
+`librnnoise_ladspa.so`.
 
 ## Install
 ```bash
