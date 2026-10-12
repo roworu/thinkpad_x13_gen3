@@ -34,3 +34,10 @@ sound/speakers/install.sh
 sound/mic/install.sh
 sudo power/install.sh
 ```
+
+## Status
+```bash
+./status.sh
+```
+Read-only: prints whether each tweak is installed and active, exits
+non-zero if any component is missing or not active.
